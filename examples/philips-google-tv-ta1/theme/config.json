@@ -1,0 +1,42 @@
+{
+  "dock_apps": [
+    "com.google.android.youtube.tv",
+    "tv.twitch.android.app",
+    "com.vk.tv",
+    "rtb.mobile.android",
+    "ru.ufanet.iptv",
+    "llc.itdev.incy"
+  ],
+  "background_color": "#101215",
+  "wallpaper": false,
+  "cinematic_home": true,
+  "dock_glass": true,
+  "icon_only_buttons": true,
+  "app_glow": false,
+  "glow_style": "horizon",
+  "focus_overshoot": false,
+  "advanced_effects": true,
+  "aurora": true,
+  "aurora_colors": [
+    "#1FBF86",
+    "#3A6BFF",
+    "#6A4DFF",
+    "#18A9C9"
+  ],
+  "aurora_speed": 100,
+  "ambient_glow": false,
+  "cinematic_art": 0,
+  "cinematic_scrim": 80,
+  "tile_menu": true,
+  "app_library": true,
+  "app_library_selection": true,
+  "launcher_settings_button": true,
+  "focus_color": "#8AB4FF",
+  "back_screensaver": true,
+  "show_last_opened": false,
+  "app_art": true,
+  "app_art_opacity": 55,
+  "show_weather": true,
+  "rows_below_dock": 0,
+  "vpn_toggle_package": "llc.itdev.incy"
+}

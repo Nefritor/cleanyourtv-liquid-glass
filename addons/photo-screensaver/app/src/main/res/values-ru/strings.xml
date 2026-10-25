@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_title">Заставка с фото</string>
+    <string name="option_clock">Показывать время и дату</string>
+    <string name="option_dates">Показывать, когда сделано фото (месяц и год)</string>
+    <string name="option_prints">Три отпечатка вместо полного экрана (без клипов)</string>
+    <string name="option_sky">Небо по времени суток за отпечатками</string>
+    <string name="option_weather">Показывать погоду (нужна геолокация ТВ)</string>
+    <string name="preview">Просмотр</string>
+    <string name="widgets_button">Виджеты</string>
+    <string name="option_credit">Показывать автора и лицензию онлайн-картинок (мелко, справа внизу)</string>
+    <string name="greeting_morning">Доброе утро</string>
+    <string name="greeting_day">Добрый день</string>
+    <string name="greeting_evening">Добрый вечер</string>
+    <string name="greeting_night">Доброй ночи</string>
+    <string name="sources_button">Источники картинок (онлайн, 4K)</string>
+    <string name="sources_title">Источники картинок</string>
+    <string name="sources_status">Отмечено источников: %1$d, картинок сохранено: %2$d, занято %3$d из %4$d МБ. Хранятся только 4K; автор и лицензия показываются на экране.</string>
+    <string name="downloading">Загрузка: %1$s</string>
+    <string name="update_now">Обновить сейчас</string>
+    <string name="select_all">Отметить все</string>
+    <string name="select_none">Снять все</string>
+    <string name="section_screen">На экране</string>
+    <string name="section_weather">Погода</string>
+    <string name="section_more">Ещё</string>
+    <string name="weather_info">Используется примерное местоположение ТВ и MET Norway. Выключено: ничего не уходит в сеть.</string>
+    <string name="weather_no_permission">Разрешите доступ к местоположению для погоды.</string>
+    <string name="weather_location_off">Службы геолокации на ТВ выключены: включите их для погоды.</string>
+    <string name="weather_ok">Местоположение включено. Погода обновляется каждые 30 минут.</string>
+    <string name="open_location_settings">Открыть настройки местоположения</string>
+</resources>

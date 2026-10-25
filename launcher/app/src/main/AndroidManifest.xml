@@ -7,6 +7,10 @@
     <uses-feature android:name="android.hardware.wifi" android:required="false" />
     <uses-feature android:name="android.hardware.location.gps" android:required="false" />
 
+    <!-- app_art (theme key): the pictures apps publish for their own rows are fetched over https, and read from the
+         TV provider (READ_TV_LISTINGS: pm grant ... android.permission.READ_TV_LISTINGS). Off unless the theme asks. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.READ_TV_LISTINGS" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <!-- Needed since Android 10 to read the Wi-Fi network name for the network pill. Never requested at
@@ -223,5 +227,12 @@
                 android:name="android.accessibilityservice"
                 android:resource="@xml/input_key_service" />
         </service>
+        <activity
+            android:name=".BackdropActivity"
+            android:exported="false" />
+        <activity
+            android:name=".WidgetSettingsActivity"
+            android:theme="@style/Theme.TvHome.Editor"
+            android:exported="false" />
     </application>
 </manifest>

@@ -3,6 +3,7 @@
     android:id="@+id/root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:clipChildren="false"
     android:background="#FF000000">
 
     <!-- Time-of-day backdrop, drawn once a minute (config.xml sky_intensity; 0 keeps it hidden). -->
@@ -110,18 +111,41 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="68dp"
         android:orientation="vertical"
+        android:clipChildren="false"
         android:alpha="0">
 
-        <TextView
-            android:id="@+id/heroName"
+        <!-- The name, and a ghost of the previous one that slides out while the new one slides in (code). Not clipped,
+             so the text is never cut off while it moves. -->
+        <FrameLayout
+            android:id="@+id/heroNameHolder"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="#FFFFFFFF"
-            android:textSize="48sp"
-            android:fontFamily="@string/font_light"
-            android:letterSpacing="-0.02"
-            android:includeFontPadding="false"
-            android:singleLine="true" />
+            android:clipChildren="false">
+
+            <TextView
+                android:id="@+id/heroNameGhost"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#FFFFFFFF"
+                android:textSize="48sp"
+                android:fontFamily="@string/font_light"
+                android:letterSpacing="-0.02"
+                android:includeFontPadding="false"
+                android:singleLine="true"
+                android:alpha="0"
+                android:importantForAccessibility="no" />
+
+            <TextView
+                android:id="@+id/heroName"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#FFFFFFFF"
+                android:textSize="48sp"
+                android:fontFamily="@string/font_light"
+                android:letterSpacing="-0.02"
+                android:includeFontPadding="false"
+                android:singleLine="true" />
+        </FrameLayout>
 
         <!-- Cinematic shelf only: when the app was last opened, and the dock position dots. -->
         <TextView
@@ -136,13 +160,13 @@
             android:fontFamily="@string/font_light"
             android:visibility="gone" />
 
-        <LinearLayout
+        <!-- The dock position: still dots and one white accent dot that stretches to the next dot and follows (DotsView). -->
+        <com.gathin.tvhome.DotsView
             android:id="@+id/heroDots"
             android:layout_width="wrap_content"
             android:layout_height="6dp"
             android:layout_marginStart="4dp"
             android:layout_marginTop="16dp"
-            android:orientation="horizontal"
             android:visibility="gone" />
     </LinearLayout>
 
@@ -225,11 +249,10 @@
                     <View
                         android:id="@+id/clockDivider"
                         android:layout_width="1dp"
-                        android:layout_height="26dp"
-                        android:layout_gravity="bottom"
+                        android:layout_height="34dp"
+                        android:layout_gravity="center_vertical"
                         android:layout_marginStart="16dp"
                         android:layout_marginEnd="16dp"
-                        android:layout_marginBottom="8dp"
                         android:background="#33FFFFFF" />
 
                     <LinearLayout
@@ -292,6 +315,22 @@
 
             </LinearLayout>
 
+            <!-- The weather under the clock, shown when the theme has show_weather. -->
+            <TextView
+                android:id="@+id/homeWeather"
+                android:layout_width="wrap_content"
+                android:layout_below="@id/leftBlock"
+                android:layout_alignStart="@id/leftBlock"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:layout_marginTop="8dp"
+                android:singleLine="true"
+                android:textColor="#F2FFFFFF"
+                android:textSize="22sp"
+                android:fontFamily="@string/font_light"
+                android:focusable="false"
+                android:visibility="gone" />
+
             <!-- Shown only when show_stats is on. Outside leftBlock, so the top buttons stay level with the clock
                  row; gone, it takes no space. -->
             <TextView
@@ -327,6 +366,15 @@
                     style="@style/TopButton"
                     android:text="@string/inputs"
                     android:drawableStart="@drawable/ic_input"
+                    android:nextFocusDown="@+id/grid" />
+
+                <!-- Switches the VPN app on and off (theme key vpn_toggle_package); gone unless the theme names one. -->
+                <TextView
+                    android:id="@+id/btnVpn"
+                    style="@style/TopButton"
+                    android:visibility="gone"
+                    android:text="@string/vpn_button_off"
+                    android:drawableStart="@drawable/ic_lock"
                     android:nextFocusDown="@+id/grid" />
 
                 <TextView

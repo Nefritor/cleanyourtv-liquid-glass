@@ -1,28 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- On top of the pictures (Scene): the month and year of the picture, the bottom line with the time, the date
-     and the weather, and where to put pictures when there are none. Each part only when its option is on. -->
+<!-- On top of the pictures (Scene): the greeting, time, date and weather at the top left like the launcher's header,
+     the picture's month and year or credit small at the bottom right, and where to put pictures when there are none.
+     Each part only when its option is on. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:clipChildren="false">
 
+    <!-- The shade under the header, so it reads on a bright picture: the bottom fade turned upside down. -->
     <View
         android:id="@+id/bottomFade"
         android:layout_width="match_parent"
-        android:layout_height="220dp"
-        android:layout_gravity="bottom"
+        android:layout_height="260dp"
+        android:layout_gravity="top"
+        android:rotation="180"
         android:background="@drawable/bottom_fade" />
 
     <TextView
         android:id="@+id/caption"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="top|start"
-        android:layout_marginStart="72dp"
-        android:layout_marginTop="40dp"
-        android:textColor="#F2FFFFFF"
-        android:textSize="20sp"
-        android:fontFamily="sans-serif-medium"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="72dp"
+        android:layout_marginBottom="36dp"
+        android:maxWidth="700dp"
+        android:maxLines="2"
+        android:ellipsize="end"
+        android:gravity="end"
+        android:textColor="#B3FFFFFF"
+        android:textSize="13sp"
+        android:fontFamily="@font/inter_regular"
         android:shadowColor="#CC000000"
         android:shadowRadius="8" />
 
@@ -40,7 +47,8 @@
             android:layout_height="wrap_content"
             android:text="@string/empty_title"
             android:textColor="#F2FFFFFF"
-            android:textSize="28sp" />
+            android:textSize="28sp"
+            android:fontFamily="@font/inter_regular" />
 
         <TextView
             android:layout_width="wrap_content"
@@ -48,7 +56,8 @@
             android:layout_marginTop="12dp"
             android:text="@string/empty_body"
             android:textColor="#B3FFFFFF"
-            android:textSize="16sp" />
+            android:textSize="16sp"
+            android:fontFamily="@font/inter_regular" />
 
         <TextView
             android:id="@+id/emptyPath"
@@ -63,67 +72,115 @@
     <!-- Moved a little every minute so it does not burn in. -->
     <LinearLayout
         android:id="@+id/bottomLine"
-        android:layout_width="match_parent"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom"
-        android:layout_marginStart="72dp"
-        android:layout_marginEnd="72dp"
-        android:layout_marginBottom="40dp"
-        android:baselineAligned="true"
-        android:orientation="horizontal">
+        android:layout_gravity="top|start"
+        android:layout_marginStart="68dp"
+        android:layout_marginTop="26dp"
+        android:orientation="vertical">
 
-        <TextClock
-            android:id="@+id/time"
+        <TextView
+            android:id="@+id/greeting"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:format12Hour="h:mm"
-            android:format24Hour="HH:mm"
-            android:textColor="#F2FFFFFF"
-            android:textSize="56sp"
-            android:fontFamily="sans-serif-light"
-            android:includeFontPadding="false"
-            android:shadowColor="#99000000"
-            android:shadowRadius="6" />
-
-        <TextClock
-            android:id="@+id/ampm"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="6dp"
-            android:format12Hour="a"
-            android:format24Hour=""
+            android:layout_marginStart="4dp"
+            android:letterSpacing="0.22"
             android:textAllCaps="true"
-            android:textColor="#B3FFFFFF"
-            android:textSize="16sp"
+            android:textColor="#8CFFFFFF"
+            android:textSize="12sp"
+            android:fontFamily="@font/inter_medium"
             android:shadowColor="#99000000"
             android:shadowRadius="6" />
 
-        <TextClock
-            android:id="@+id/date"
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="22dp"
-            android:format12Hour="@string/date_format"
-            android:format24Hour="@string/date_format"
-            android:letterSpacing="0.14"
-            android:textAllCaps="true"
-            android:textColor="#B3FFFFFF"
-            android:textSize="16sp"
-            android:shadowColor="#99000000"
-            android:shadowRadius="6" />
+            android:layout_marginTop="0dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
-        <Space
-            android:layout_width="0dp"
-            android:layout_height="1dp"
-            android:layout_weight="1" />
+            <TextClock
+                android:id="@+id/time"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:format12Hour="h:mm"
+                android:format24Hour="HH:mm"
+                android:textColor="#F2FFFFFF"
+                android:textSize="52sp"
+                android:fontFamily="@font/inter_light"
+                android:letterSpacing="-0.04"
+                android:includeFontPadding="false"
+                android:shadowColor="#99000000"
+                android:shadowRadius="8" />
+
+            <TextClock
+                android:id="@+id/ampm"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:format12Hour="a"
+                android:format24Hour=""
+                android:textAllCaps="true"
+                android:textColor="#B3FFFFFF"
+                android:textSize="15sp"
+                android:fontFamily="@font/inter_medium"
+                android:shadowColor="#99000000"
+                android:shadowRadius="6" />
+
+            <View
+                android:id="@+id/divider"
+                android:layout_width="1dp"
+                android:layout_height="34dp"
+                android:layout_marginStart="16dp"
+                android:layout_marginEnd="16dp"
+                android:background="#33FFFFFF" />
+
+            <LinearLayout
+                android:id="@+id/dateBlock"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextClock
+                    android:id="@+id/date"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:format12Hour="EEEE"
+                    android:format24Hour="EEEE"
+                    android:letterSpacing="0.14"
+                    android:textAllCaps="true"
+                    android:textColor="#A6FFFFFF"
+                    android:textSize="14sp"
+                    android:fontFamily="@font/inter_regular"
+                    android:shadowColor="#99000000"
+                    android:shadowRadius="6" />
+
+                <TextClock
+                    android:id="@+id/date2"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:format12Hour="d MMMM"
+                    android:format24Hour="d MMMM"
+                    android:letterSpacing="0.14"
+                    android:textAllCaps="true"
+                    android:textColor="#A6FFFFFF"
+                    android:textSize="14sp"
+                    android:fontFamily="@font/inter_regular"
+                    android:shadowColor="#99000000"
+                    android:shadowRadius="6" />
+            </LinearLayout>
+        </LinearLayout>
 
         <TextView
             android:id="@+id/weather"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:layout_marginTop="8dp"
             android:textColor="#F2FFFFFF"
-            android:textSize="32sp"
-            android:fontFamily="sans-serif-light"
+            android:textSize="22sp"
+            android:fontFamily="@font/inter_light"
             android:shadowColor="#99000000"
             android:shadowRadius="6" />
     </LinearLayout>

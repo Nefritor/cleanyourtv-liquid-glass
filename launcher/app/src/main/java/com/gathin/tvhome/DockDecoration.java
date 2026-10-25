@@ -14,6 +14,9 @@ import androidx.recyclerview.widget.RecyclerView;
 /** Draws the tvOS style lighter band behind the first (dock) row and adds a gap below it. */
 public class DockDecoration extends RecyclerView.ItemDecoration {
 
+    /** Room above the dock tiles for the band and a focused tile's margin to it; MainActivity scrolls by the same amount. */
+    static final float TOP_DP = 24f;
+
     private final int dockSize;
     private final float density;
     private final Paint band = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -76,8 +79,9 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
                                @NonNull RecyclerView.State state) {
         int pos = parent.getChildAdapterPosition(view);
         if (pos >= 0 && (singleRow || pos < dockSize)) {
-            outRect.top = (int) (6 * density);
-            outRect.bottom = (int) (12 * density);
+            // Room for the band above and below the tiles, so a focused tile (it grows and glows) keeps a margin to the band's edge.
+            outRect.top = (int) (TOP_DP * density);
+            outRect.bottom = (int) (24 * density);   // also keeps the next row from peeking in at the screen edge
         }
     }
 
@@ -105,7 +109,7 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
             }
         }
         if (!any) return;
-        float pad = 14 * density;
+        float pad = 24 * density;
         // The band can only draw inside the grid, and the first and last dock tiles sit 12dp in from its
         // edges: a full 14dp at the sides sliced the rounded ends flat (#454). Keep the sides, with the
         // 1dp edge line, inside the grid; the top and bottom have room.

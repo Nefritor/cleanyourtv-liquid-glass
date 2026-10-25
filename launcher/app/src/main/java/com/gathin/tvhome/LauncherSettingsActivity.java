@@ -24,10 +24,11 @@ public final class LauncherSettingsActivity extends Activity {
     static final String EXTRA_REORDER = "com.gathin.tvhome.extra.REORDER_FROM_SETTINGS";
     private SharedPreferences choices;
     private final TextView[] columnChoices = new TextView[4];
-    private final TextView[] rowChoices = new TextView[4];
     private static final int[] DOCK_OPACITIES = {100, 70, 50, 30};
     private final TextView[] dockChoices = new TextView[DOCK_OPACITIES.length];
     private TextView wallpaperChoice;
+    private TextView appArtChoice;
+    private boolean appArt;
     private TextView animationsChoice;
     private TextView advancedChoice;
     private TextView followThemeChoice;
@@ -68,18 +69,6 @@ public final class LauncherSettingsActivity extends Activity {
                 refresh();
             });
         }
-        int[] rowIds = {R.id.rows0, R.id.rows1, R.id.rows2, R.id.rows3};
-        for (int i = 0; i < rowIds.length; i++) {
-            final int value = i;
-            rowChoices[i] = findViewById(rowIds[i]);
-            rowChoices[i].setOnClickListener(v -> {
-                if (rowsBelowDock == value) return;
-                rowsBelowDock = value;
-                choices.edit().putInt(Config.ROWS_BELOW_DOCK_KEY, value).apply();
-                changed();
-                refresh();
-            });
-        }
         int[] dockIds = {R.id.dock100, R.id.dock70, R.id.dock50, R.id.dock30};
         for (int i = 0; i < dockIds.length; i++) {
             final int value = DOCK_OPACITIES[i];
@@ -96,9 +85,16 @@ public final class LauncherSettingsActivity extends Activity {
         // actual views so D-pad focus follows their positions without changing the saved values.
         if (getResources().getBoolean(R.bool.rtl_app_grid)) {
             reverseRow(columnChoices);
-            reverseRow(rowChoices);
             reverseRow(dockChoices);
         }
+        appArt = Config.appArtEnabled(this);
+        appArtChoice = findViewById(R.id.appArtChoice);
+        appArtChoice.setOnClickListener(v -> startActivityForResult(new Intent(this, BackdropActivity.class), 41));
+        findViewById(R.id.widgetsChoice).setOnClickListener(v -> {
+            // The editor stands on the real Home: go back to it and let it start the editor.
+            MainActivity.openWidgetsEditor = true;
+            finish();
+        });
         wallpaperChoice = findViewById(R.id.wallpaperChoice);
         wallpaperChoice.setOnClickListener(v -> showWallpaperPicker());
         animationsChoice = findViewById(R.id.animationsChoice);
@@ -133,13 +129,14 @@ public final class LauncherSettingsActivity extends Activity {
             if (!hasOnTvChoices()) return;
             choices.edit().remove("columns").remove(Config.ROWS_BELOW_DOCK_KEY).remove("animations")
                     .remove("advanced_effects").remove(Config.WALLPAPER_CHOICE_KEY)
-                    .remove(Config.DOCK_OPACITY_KEY).remove(OpenOnStart.KEY).commit();
+                    .remove(Config.DOCK_OPACITY_KEY).remove(OpenOnStart.KEY).remove("app_art").commit();
             Config current = Config.load(this);
             columns = current.columns;
             rowsBelowDock = current.rowsBelowDock;
             dockOpacity = current.dockOpacity;
             animations = current.animations;
             advancedEffects = current.animations && current.advancedEffects;
+            appArt = Config.appArtEnabled(this);
             changed();
             refresh();
         });
@@ -256,6 +253,33 @@ public final class LauncherSettingsActivity extends Activity {
      * A choice was saved. Home rebuilds when it next resumes because the change count moved, whether these
      * settings are left with Back or with the remote's Home button (which cancels the activity result).
      */
+    private String backdropName() {
+        String id = Config.backdrop(this);
+        if (id == null) id = Config.appArtEnabled(this) ? "appart" : "aurora";
+        boolean ru = java.util.Locale.getDefault().getLanguage().equals("ru");
+        switch (id) {
+            case "appart": return ru ? "Карточки приложений" : "App pictures";
+            case "wallpaper": return ru ? "Обои темы" : "Theme wallpaper";
+            case "stars": return ru ? "Звёздное небо" : "Night sky";
+            case "sunset": return ru ? "Закат" : "Sunset";
+            case "ocean": return ru ? "Океан" : "Ocean";
+            case "forest": return ru ? "Лес" : "Forest";
+            case "violet": return ru ? "Фиолет" : "Violet";
+            case "ember": return ru ? "Угли" : "Embers";
+            case "graphite": return ru ? "Графит" : "Graphite";
+            default: return ru ? "Аврора" : "Aurora";
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == 41 && resultCode == RESULT_OK) {
+            setResult(RESULT_OK);
+            refresh();
+        }
+    }
+
     private void changed() {
         setResult(RESULT_OK);
         choices.edit().putLong(Config.SETTINGS_REVISION_KEY,
@@ -273,12 +297,10 @@ public final class LauncherSettingsActivity extends Activity {
         for (int i = 0; i < columnChoices.length; i++) {
             columnChoices[i].setSelected(columns == i + 4);
         }
-        for (int i = 0; i < rowChoices.length; i++) {
-            rowChoices[i].setSelected(rowsBelowDock == i);
-        }
         for (int i = 0; i < dockChoices.length; i++) {
             dockChoices[i].setSelected(dockOpacity == DOCK_OPACITIES[i]);
         }
+        appArtChoice.setText(getString(R.string.backdrop_state, backdropName()));
         animationsChoice.setText(getString(R.string.animations_state,
                 getString(animations ? R.string.on : R.string.off)));
         advancedChoice.setText(getString(R.string.advanced_effects_state,
@@ -298,7 +320,7 @@ public final class LauncherSettingsActivity extends Activity {
         return choices.contains("columns") || choices.contains(Config.ROWS_BELOW_DOCK_KEY)
                 || choices.contains("animations") || choices.contains("advanced_effects")
                 || choices.contains(Config.WALLPAPER_CHOICE_KEY) || choices.contains(Config.DOCK_OPACITY_KEY)
-                || choices.contains(OpenOnStart.KEY);
+                || choices.contains(OpenOnStart.KEY) || choices.contains("app_art");
     }
 
     private void open(Intent intent) {

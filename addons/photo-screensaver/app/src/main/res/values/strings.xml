@@ -11,10 +11,26 @@
     <string name="option_prints">Three prints instead of full screen (no clips)</string>
     <string name="option_sky">Sky that follows the time of day behind the prints</string>
     <string name="option_weather">Show the weather (needs the TV\'s location)</string>
-    <string name="weather_info">Uses the TV\'s rough location and Open-Meteo. Off: nothing goes over the network.</string>
+    <string name="weather_info">Uses the TV\'s rough location and MET Norway. Off: nothing goes over the network.</string>
     <string name="weather_no_permission">Allow location access for the weather.</string>
     <string name="weather_location_off">Location services are off on this TV: turn them on for the weather.</string>
     <string name="weather_ok">Location is on. The weather is updated every 30 minutes.</string>
     <string name="open_location_settings">Open location settings</string>
     <string name="preview">Preview</string>
+    <string name="widgets_button">Widgets</string>
+    <string name="option_credit">Show the author and licence of online pictures (small, bottom right)</string>
+    <string name="greeting_morning">Good morning</string>
+    <string name="greeting_day">Good afternoon</string>
+    <string name="greeting_evening">Good evening</string>
+    <string name="greeting_night">Good night</string>
+    <string name="sources_button">Picture sources (online, 4K)</string>
+    <string name="sources_title">Picture sources</string>
+    <string name="sources_status">%1$d sources ticked, %2$d pictures stored, %3$d of %4$d MB used. Only 4K pictures are kept; the author and licence show on screen.</string>
+    <string name="downloading">Downloading: %1$s</string>
+    <string name="update_now">Update now</string>
+    <string name="select_all">Tick all</string>
+    <string name="select_none">Untick all</string>
+    <string name="section_screen">On the screen</string>
+    <string name="section_weather">Weather</string>
+    <string name="section_more">More</string>
 </resources>

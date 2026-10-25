@@ -62,6 +62,7 @@ import android.view.ViewTreeObserver;
 import android.view.Window;
 import android.view.animation.AnimationUtils;
 import android.view.animation.LayoutAnimationController;
+import android.view.animation.DecelerateInterpolator;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -134,13 +135,48 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private RecyclerView grid;
     private FrameLayout root;
     private WallpaperPlayer wallpaperPlayer;
+    /** Theme key focus_color: one highlight colour for every tile instead of the app's own; 0 when unset. */
+    private int focusColor;
+    /** Theme key back_screensaver: Back on Home starts the screensaver. */
+    private boolean backScreensaver;
+    /** Theme key show_last_opened (true by default): the "last opened" line under the focused app's name. */
+    private boolean showLastOpened;
+    /** Theme key hero_slow (1 by default): the name's slide takes this many times longer, for looking at it frame by frame. */
+    private int heroSlow = 1;
+    /** Theme key show_weather: the weather line under the clock (HomeWeather); null when off. */
+    private TextView homeWeather;
+    /** The VPN pill (theme key vpn_toggle_package), its package, and whether a VPN network is up now. */
+    private TextView btnVpn;
+    private String vpnTogglePackage = "";
+    private boolean vpnUp;
+    /** Theme key app_art: the focused app's own pictures behind Home (AppArtView); null when off. */
+    private AppArtView appArt;
+    /** The widget cards on Home (com.gathin.widgets); set up in onCreate. */
+    private com.gathin.widgets.Widgets.Host widgets;
+    /** Set by the settings page: Home starts the cards editor when it is back in front. */
+    static boolean openWidgetsEditor;
+    /** Where the cards may stand on Home, their margins and fonts; also what the widgets settings page edits. */
+    static com.gathin.widgets.Widgets.Surface widgetSurface(Context ctx) {
+        com.gathin.widgets.Widgets.Surface s = new com.gathin.widgets.Widgets.Surface(4, 2, 418, 112,
+                ctx.getResources().getFont(R.font.inter_light), ctx.getResources().getFont(R.font.inter_regular),
+                ctx.getResources().getFont(R.font.inter_medium));
+        s.home = true;
+        s.defaults.put("moon", new com.gathin.widgets.Widgets.Placement(2, 0, 2, 1));
+        s.defaults.put("sun", new com.gathin.widgets.Widgets.Placement(2, 1, 2, 1));
+        // No blur behind the cards on Home: refreshing the snapshot made their brightness flicker.
+        return s;
+    }
     private GlassView glass;
     private View ambient;
     private TextView heroName;
     /** The top shelf: heroName, plus the cinematic shelf's "Last opened" line and dock position dots. */
     private View hero;
     private TextView heroMeta;
-    private LinearLayout heroDots;
+    private DotsView heroDots;
+    /** The previous name, sliding out while the new one slides in. */
+    private TextView heroNameGhost;
+    /** The dock position the shelf's name was last for; the new name enters from the side the focus moved to. */
+    private int heroPos = -1;
     /** Cinematic top shelf (config.xml, cinematic_home): the focused dock app's artwork behind a larger shelf. */
     private boolean cinematic;
     /** config.xml ambient_glow, overridable by a theme. Off: the glow view is gone and no fade or colour animator
@@ -415,6 +451,22 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // the theme's background, so launch looks the same.
         getWindow().setBackgroundDrawable(null);
         wallpaperPlayer = new WallpaperPlayer(this, root, cfg);
+        AuroraView.attach(this, root, cfg.reducedMotion);
+        StarsView.attach(this, root, cfg.reducedMotion);
+        focusColor = Config.themeColor(this, "focus_color");
+        backScreensaver = Config.themeBool(this, "back_screensaver");
+        showLastOpened = Config.themeBool(this, "show_last_opened", true);
+        heroSlow = Config.themeInt(this, "hero_slow", 1, 1, 20);
+        widgets = new com.gathin.widgets.Widgets.Host(this, widgetSurface(this));
+        root.addView(widgets.view(), new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        homeWeather = Config.themeBool(this, "show_weather") ? (TextView) findViewById(R.id.homeWeather) : null;
+        if (Config.appArtEnabled(this)) {
+            appArt = new AppArtView(this, Config.themeInt(this, "app_art_opacity", 70, 10, 100) / 100f);
+            View scrimView = findViewById(R.id.heroScrim);
+            ViewGroup art = (ViewGroup) scrimView.getParent();
+            art.addView(appArt, art.indexOfChild(scrimView), new ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        }
         sky = findViewById(R.id.sky);
         sky.setIntensity(cfg.skyIntensity);
         glass = findViewById(R.id.glass);
@@ -434,6 +486,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         hero.forceHasOverlappingRendering(false);
         heroMeta = findViewById(R.id.heroMeta);
         heroDots = findViewById(R.id.heroDots);
+        heroNameGhost = findViewById(R.id.heroNameGhost);
+        giveHeroTextRoom(heroName);
+        giveHeroTextRoom(heroNameGhost);
+        giveHeroTextRoom(heroMeta);
         heroArt = findViewById(R.id.heroArt);
         cinematic = cfg.cinematicHome;
         glowStyle = cfg.glowStyle;
@@ -630,6 +686,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         grid.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrolled(@NonNull RecyclerView rv, int dx, int dy) {
+                followWidgets(rv);
                 if (!glassShown) return;
                 glassTargetY -= dy;
                 glassScrollShift -= dy;
@@ -681,6 +738,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         btnInputs = findViewById(R.id.btnInputs);
         View btnSettings = findViewById(R.id.btnSettings);
         btnInputs.setOnClickListener(v -> showInputs());
+        setUpVpnButton();
         btnWifi.setOnClickListener(v -> openNetworkPill());
         btnWifi.setOnLongClickListener(v -> {
             open(systemIntent(Settings.ACTION_WIFI_SETTINGS));
@@ -768,6 +826,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         };
         btnInputs.setOnKeyListener(pillKeys);
         btnWifi.setOnKeyListener(pillKeys);
+        if (btnVpn != null) btnVpn.setOnKeyListener(pillKeys);
         btnSettings.setOnKeyListener(pillKeys);
         btnReorder.setOnKeyListener(pillKeys);
         btnLibraryTop.setOnKeyListener(pillKeys);
@@ -908,6 +967,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     protected void onResume() {
         super.onResume();
+        if (openWidgetsEditor) {
+            openWidgetsEditor = false;
+            startActivity(new Intent(this, WidgetSettingsActivity.class));
+        }
         // A festival that started or ended while Home was in the background: rebuild with or without it.
         if (festive != festival.active(LocalDate.now())) {
             recreate();
@@ -953,6 +1016,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (showStats) startStats();
         sky.update();
         wallpaperPlayer.start();
+        if (homeWeather != null) updateHomeWeather();
+        widgets.start();
+        followWidgets(grid);
+        if (appArt != null) {
+            appArt.start();
+            new Thread(() -> AppArt.sync(getApplicationContext()), "app-art").start();
+        }
         handler.postDelayed(minuteTick, MINUTE_MS);
         if (festive && diya != null) {
             diya.start();
@@ -1122,6 +1192,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         root.removeCallbacks(showIdleClock);
         endReorder();   // Home or another app while reordering keeps the order so far
         wallpaperPlayer.stop();
+        if (appArt != null) appArt.stop();
+        widgets.stop();
         stopAmbientAnimation();
         hero.animate().cancel();
         ambient.animate().cancel();
@@ -1551,7 +1623,18 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     @Override
     public void onBackPressed() {
-        // Home screen: Back goes nowhere.
+        // Home screen: Back goes nowhere, or starts the screensaver (theme key back_screensaver).
+        if (backScreensaver) startScreensaver();
+    }
+
+    /** The photo screensaver add-on's slideshow when it is installed, else the launcher's own clock. */
+    private void startScreensaver() {
+        Intent photos = new Intent().setComponent(new ComponentName("com.gathin.photodream", "com.gathin.photodream.SlideshowActivity"));
+        try {
+            startActivity(photos);
+        } catch (RuntimeException notInstalled) {
+            startActivity(new Intent(this, ClockActivity.class));
+        }
     }
 
     // ---- glass highlight -------------------------------------------------------------------------
@@ -1595,12 +1678,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         Rect r = tileRect;
         r.set(0, 0, card.getWidth(), card.getHeight());
         root.offsetDescendantRectToMyCoords(card, r);
-        float pad = 6f * density;        // matches GlassView's glow inset
+        float pad = GlassView.INSET_DP * density;        // matches GlassView's glow inset
         float scale = adapter.focusScale();
         float w = card.getWidth() * scale + 2 * pad;
         float h = card.getHeight() * scale + 2 * pad;
         float x = r.exactCenterX() - w / 2f;
-        float y = r.exactCenterY() - h / 2f - (advancedEffects ? 4f * density : 0f);
+        float y = r.exactCenterY() - h / 2f;
 
         ViewGroup.LayoutParams lp = glass.getLayoutParams();
         if (lp.width != (int) w || lp.height != (int) h || card.getWidth() != glassCardW) {
@@ -1616,8 +1699,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // Cinematic shelf: the highlight glows in the dock app's colour, plain white in the grid (and on the dock with
         // cinematic_white_focus). app_glow: every tile. In a single row every tile is the dock's kind.
         boolean coloured = (appGlow || cinematic && !cinematicWhiteFocus && (singleRow || position < COLUMNS)) && !festive;
-        int accent = coloured ? adapter.ambientColorAt(position) : 0;
-        if ((cinematic || appGlow) && !festive && accent != glassAccent) {
+        int accent = focusColor != 0 && !festive ? focusColor : coloured ? adapter.ambientColorAt(position) : 0;
+        if ((cinematic || appGlow || focusColor != 0) && !festive && accent != glassAccent) {
             glassAccent = accent;
             glass.setAccent(accent);
         }
@@ -1642,7 +1725,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (dockRow && (singleRow || position < COLUMNS)) {
             // Dock: park it at the bottom of the screen and show the top shelf for this app. In a single row
             // every tile is in the dock's row, which never scrolls vertically.
-            int decoratedTop = item.getTop() - (int) (6 * density);
+            int decoratedTop = item.getTop() - (int) (DockDecoration.TOP_DP * density);
             int dy = decoratedTop - grid.getPaddingTop();
             // A 1px mismatch used to start a scroll on every dock move. Only scroll when the row is
             // actually off; reduced motion does it in one jump so it does not fight the highlight.
@@ -1669,7 +1752,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         RecyclerView.ViewHolder vh = grid.findViewHolderForAdapterPosition(pos);
         View card = vh == null ? null : vh.itemView.findViewById(R.id.card);
         if (card == null || card.getWidth() <= 0 || !card.isFocused()) return;
-        float pad = 6f * density;
+        float pad = GlassView.INSET_DP * density;
         float scale = adapter.focusScale();
         int w = (int) (card.getWidth() * scale + 2 * pad);
         int h = (int) (card.getHeight() * scale + 2 * pad);
@@ -1685,7 +1768,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         int color = adapter.ambientColorAt(position);
         float y = dockTopInRoot - 14 * density - 26 * density - hero.getHeight();
         boolean changed = !label.contentEquals(heroName.getText());
+        if (cinematic) updateHeroDots(position);
         if (cinematic && heroArtAlpha > 0f) showHeroArt(position);
+        if (appArt != null) appArt.show(adapter.packageAt(position));
 
         if (!animations || reducedMotion) {
             // Snap the shelf instead of sliding and fading it: each of those frames repaints the
@@ -1701,6 +1786,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 ambient.setAlpha(1f);
             }
             heroShown = true;
+            heroPos = position;
             return;
         }
 
@@ -1717,14 +1803,36 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 ambient.animate().alpha(1f).setDuration(600).start();
             }
             heroShown = true;
+            heroName.setTranslationX(0f);
+            heroName.setAlpha(1f);
+            heroMeta.setTranslationX(0f);
+            heroMeta.setAlpha(1f);
         } else if (changed) {
-            if (advancedEffects) hero.animate().cancel();
-            hero.animate().alpha(0f).translationX(-12 * density).setDuration(120).withEndAction(() -> {
-                fillHero(position, label);
-                hero.setY(y);
-                hero.setTranslationX(12 * density);
-                hero.animate().alpha(1f).translationX(0f).setDuration(200).start();
-            }).start();
+            // The old name slides out the way the focus is going while the new one slides in from that side, both at once,
+            // over one soft curve: moving right carries the text left, moving left carries it right. The dots do not move.
+            int dir = heroPos < 0 || position == heroPos ? 1 : (position > heroPos ? 1 : -1);
+            if (rtlAppGrid) dir = -dir;
+            final float shift = 56 * density * dir;
+            heroNameGhost.animate().cancel();
+            heroName.animate().cancel();
+            heroMeta.animate().cancel();
+            heroNameGhost.setTextSize(TypedValue.COMPLEX_UNIT_PX, heroName.getTextSize());
+            heroNameGhost.setTypeface(heroName.getTypeface());
+            heroNameGhost.setLetterSpacing(heroName.getLetterSpacing());
+            heroNameGhost.setText(heroName.getText());
+            heroNameGhost.setAlpha(heroName.getAlpha());
+            heroNameGhost.setTranslationX(heroName.getTranslationX());
+            fillHero(position, label);
+            hero.setY(y);
+            heroName.setAlpha(0f);
+            heroName.setTranslationX(shift);
+            heroMeta.setAlpha(0f);
+            heroMeta.setTranslationX(shift * 0.6f);
+            android.view.animation.PathInterpolator soft = new android.view.animation.PathInterpolator(0.16f, 0.84f, 0.3f, 1f);
+            heroNameGhost.animate().alpha(0f).translationX(-shift * 0.6f).setDuration(420L * heroSlow)
+                    .setInterpolator(new android.view.animation.PathInterpolator(0.3f, 0f, 0.6f, 1f)).start();
+            heroName.animate().alpha(1f).translationX(0f).setDuration(780L * heroSlow).setStartDelay(100L * heroSlow).setInterpolator(soft).start();
+            heroMeta.animate().alpha(1f).translationX(0f).setDuration(780L * heroSlow).setStartDelay(200L * heroSlow).setInterpolator(soft).start();
             if (ambientGlow && advancedEffects) {
                 transitionAmbient(color);
             } else if (ambientGlow && color != ambientColor) {
@@ -1736,6 +1844,23 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         } else {
             hero.setY(y);
         }
+        heroPos = position;
+    }
+
+    /**
+     * Padding all round a shelf text with the same amount taken off its margins: the layout stays where it was, but the
+     * view is bigger than its letters. While the text fades (it is drawn into a layer cut to the view) and slides, its
+     * edges would otherwise be sliced right at the glyphs, which read as the text turning a corner.
+     */
+    private void giveHeroTextRoom(TextView v) {
+        int padH = Math.round(36 * density), padV = Math.round(16 * density);
+        ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) v.getLayoutParams();
+        lp.leftMargin -= padH;
+        lp.rightMargin -= padH;
+        lp.topMargin -= padV;
+        lp.bottomMargin -= padV;
+        v.setLayoutParams(lp);
+        v.setPadding(v.getPaddingLeft() + padH, v.getPaddingTop() + padV, v.getPaddingRight() + padH, v.getPaddingBottom() + padV);
     }
 
     /** The shelf's text for this dock app: its name and, on the cinematic shelf, "Last opened" and the dots. */
@@ -1753,7 +1878,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
      * scrimPercent of its strength (cinematic_scrim). cinematic_art 0 leaves the artwork out, 0 percent the scrim.
      */
     private void setUpCinematicShelf(int scrimPercent) {
-        heroName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 68f);
+        heroName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 54f);
         heroName.setLetterSpacing(-0.025f);
         heroMeta.setVisibility(View.INVISIBLE);   // keeps its height, so the name does not jump when it fills in
         heroDots.setVisibility(heroDotsShown ? View.VISIBLE : View.GONE);
@@ -1824,9 +1949,27 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     }
 
     /** "Last opened yesterday, 9:40 PM", the time in white; nothing (but the same height) when it was never seen. */
+    /** Shows the last reading at once and fetches a fresh one when it is more than 30 minutes old. */
+    private void updateHomeWeather() {
+        String text = HomeWeather.cached(this);
+        homeWeather.setText(text);
+        homeWeather.setVisibility(text.isEmpty() ? View.GONE : View.VISIBLE);
+        if (!HomeWeather.stale(this)) return;
+        final Context app = getApplicationContext();
+        new Thread(() -> {
+            String fresh = HomeWeather.refresh(app);
+            if (fresh.isEmpty()) return;
+            runOnUiThread(() -> {
+                if (isDestroyed() || homeWeather == null) return;
+                homeWeather.setText(fresh);
+                homeWeather.setVisibility(View.VISIBLE);
+            });
+        }, "home-weather").start();
+    }
+
     private void updateHeroMeta(int position) {
         long when = LastOpened.get(this, adapter.packageAt(position));
-        if (when <= 0) {
+        if (when <= 0 || !showLastOpened) {
             heroMeta.setVisibility(View.INVISIBLE);
             return;
         }
@@ -1844,28 +1987,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (!heroDotsShown) return;
         int count = Math.min(adapter.dockFilled(), COLUMNS);
         heroDots.setVisibility(count > 1 ? View.VISIBLE : View.INVISIBLE);
-        if (heroDots.getChildCount() != count) {
-            heroDots.removeAllViews();
-            for (int i = 0; i < count; i++) {
-                View dot = new View(this);
-                GradientDrawable bg = new GradientDrawable();
-                bg.setCornerRadius(3 * density);
-                dot.setBackground(bg);
-                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams((int) (6 * density), (int) (6 * density));
-                if (i > 0) lp.leftMargin = (int) (6 * density);
-                heroDots.addView(dot, lp);
-            }
-        }
-        for (int i = 0; i < count; i++) {
-            View dot = heroDots.getChildAt(rtlAppGrid ? count - 1 - i : i);
-            boolean on = i == position;
-            ((GradientDrawable) dot.getBackground()).setColor(on ? 0xFFFFFFFF : 0x4DFFFFFF);
-            ViewGroup.LayoutParams lp = dot.getLayoutParams();
-            int w = (int) ((on ? 20 : 6) * density);
-            if (lp.width != w) {
-                lp.width = w;
-                dot.setLayoutParams(lp);
-            }
+        int slot = rtlAppGrid ? count - 1 - position : position;
+        if (heroDots.count() != count) {
+            heroDots.setDots(count, slot);
+        } else {
+            heroDots.moveTo(slot, animations && !reducedMotion && heroShown);
         }
     }
 
@@ -1974,6 +2100,18 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             setAmbient(color);
             ambient.animate().alpha(1f).setDuration(500).start();
         }).start();
+    }
+
+    /**
+     * The cards belong to the top shelf: as the grid scrolls up to the rows under the dock they ride up with it and
+     * fade, at the grid's own speed (they are driven by its scroll offset, so reduced motion jumps too).
+     */
+    private void followWidgets(RecyclerView rv) {
+        if (widgets == null) return;
+        float off = Math.max(0, rv.computeVerticalScrollOffset());
+        View layer = widgets.view();
+        layer.setTranslationY(-off);
+        layer.setAlpha(Math.max(0f, 1f - off / (140 * density)));
     }
 
     private void hideHero() {
@@ -2519,6 +2657,50 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         root.invalidate();   // a resume that changes nothing on screen still draws once, so the refresh runs
     }
 
+    // ---- VPN button ------------------------------------------------------------------------------
+
+    /**
+     * Theme key vpn_toggle_package (INCY: llc.itdev.incy): a pill that switches that VPN app on and off by broadcasting its
+     * own CONNECT and DISCONNECT actions to its VpnIntentReceiver. If the state has not changed after 6 s, the app is
+     * opened so its own prompt (the first connection asks for permission) can be answered.
+     */
+    private void setUpVpnButton() {
+        String pkg = Config.themeString(this, "vpn_toggle_package");
+        if (pkg.isEmpty() || !pkg.matches("[A-Za-z0-9_.]+")) return;
+        btnVpn = (TextView) findViewById(R.id.btnVpn);
+        btnVpn.setVisibility(View.VISIBLE);
+        vpnTogglePackage = pkg;
+        btnVpn.setOnClickListener(v -> {
+            final boolean wasUp = vpnUp;
+            Intent i = new Intent(pkg + (wasUp ? ".DISCONNECT" : ".CONNECT"))
+                    .setClassName(pkg, pkg + ".receiver.VpnIntentReceiver");
+            try {
+                sendBroadcast(i);
+            } catch (RuntimeException e) {
+                openVpnApp();
+                return;
+            }
+            btnVpn.setText(R.string.vpn_button_wait);
+            btnVpn.postDelayed(() -> {
+                updateWifiLabel();
+                if (vpnUp == wasUp && !isFinishing()) openVpnApp();
+            }, 6000);
+        });
+    }
+
+    private void openVpnApp() {
+        Intent i = getPackageManager().getLeanbackLaunchIntentForPackage(vpnTogglePackage);
+        if (i == null) i = getPackageManager().getLaunchIntentForPackage(vpnTogglePackage);
+        if (i != null) open(i);
+    }
+
+    private void updateVpnButton(boolean up) {
+        vpnUp = up;
+        if (btnVpn == null) return;
+        btnVpn.setText(up ? R.string.vpn_button_on : R.string.vpn_button_off);
+        btnVpn.setCompoundDrawableTintList(android.content.res.ColorStateList.valueOf(up ? 0xFF6EE7A0 : 0xCCFFFFFF));
+    }
+
     /** Shows the Wi-Fi network name on the button when we can read it, otherwise the connection type. */
     private void updateWifiLabel() {
         String text = getString(R.string.wifi);
@@ -2565,6 +2747,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             }
         } catch (Exception ignored) {
         }
+        updateVpnButton(vpn);
         // With a VPN app configured, a VPN that is down matters too: show a red "VPN off" capsule then.
         boolean vpnDown = !vpn && online && !vpnApp.isEmpty();
         if (vpn || vpnDown) {

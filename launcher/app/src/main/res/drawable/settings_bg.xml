@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The settings page backdrop: near-black with a faint teal light at the top right and violet at the bottom left, like Home. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#FF0E1013" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="radial"
+                android:centerX="0.95"
+                android:centerY="0.0"
+                android:gradientRadius="900dp"
+                android:startColor="#3326A69A"
+                android:endColor="#0026A69A" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="radial"
+                android:centerX="0.0"
+                android:centerY="1.0"
+                android:gradientRadius="800dp"
+                android:startColor="#334A3FB5"
+                android:endColor="#004A3FB5" />
+        </shape>
+    </item>
+</layer-list>

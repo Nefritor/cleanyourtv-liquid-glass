@@ -1,0 +1,137 @@
+# provider|id|title|query  (one feed per line; the picker shows the title, the fetcher uses the query)
+commons|c:landscapes|Пейзажи|Featured pictures of landscapes
+commons|c:cityscapes|Городские виды|Featured pictures of cityscapes
+commons|c:mountains|Горы|Featured pictures of mountains
+commons|c:lakes|Озёра|Featured pictures of lakes
+commons|c:sunsets|Закаты|Featured pictures of sunsets
+commons|c:sunrises|Рассветы|Featured pictures of sunrises
+commons|c:clouds|Облака|Featured pictures of clouds
+commons|c:fog|Туман|Featured pictures of fog
+commons|c:reflections|Отражения|Featured pictures of reflections
+commons|c:beaches|Пляжи|Featured pictures of beaches
+commons|c:bodies_of_water|Водоёмы|Featured pictures of bodies of water
+commons|c:waterfalls|Водопады|Featured pictures of waterfalls
+commons|c:forests|Леса|Featured pictures of forests
+commons|c:trees|Деревья|Featured pictures of trees
+commons|c:flowers|Цветы|Featured pictures of flowers
+commons|c:coasts|Побережья|Featured pictures of coasts
+commons|c:snow|Снег|Featured pictures of snow
+commons|c:ice|Лёд|Featured pictures of ice
+commons|c:volcanoes|Вулканы|Featured pictures of volcanoes
+commons|c:islands|Острова|Featured pictures of islands
+commons|c:lighthouses|Маяки|Featured pictures of lighthouses
+commons|c:castles|Замки|Featured pictures of castles
+commons|c:palaces|Дворцы|Featured pictures of palaces
+commons|c:bridges|Мосты|Featured pictures of bridges
+commons|c:towers|Башни|Featured pictures of towers
+commons|c:skylines|Силуэты городов|Featured pictures of skylines
+commons|c:boats|Лодки и корабли|Featured pictures of boats
+commons|c:building_interiors|Интерьеры зданий|Featured pictures of building interiors
+commons|c:stained-glass_windows_of_churches|Витражи церквей|Featured pictures of stained-glass windows of churches
+commons|c:railway_stations|Вокзалы|Featured pictures of railway stations
+commons|c:rail_vehicles|Поезда|Featured pictures of rail vehicles
+commons|c:astronomy|Астрономия (Commons)|Featured pictures of astronomy
+commons|c:birds_in_flight|Птицы в полёте|Featured pictures of birds in flight
+commons|c:birds_by_Charlesjsharp|Птицы (Charlesjsharp)|Featured pictures of birds by Charlesjsharp
+commons|c:mammals_by_Charlesjsharp|Млекопитающие (Charlesjsharp)|Featured pictures of mammals by Charlesjsharp
+commons|c:butterflies_by_Charlesjsharp|Бабочки (Charlesjsharp)|Featured pictures of butterflies by Charlesjsharp
+commons|c:animals_in_Australia|Животные Австралии|Featured pictures of animals in Australia
+commons|c:animals_in_Tanzania|Животные Танзании|Featured pictures of animals in Tanzania
+commons|c:landscapes_in_Estonia|Эстония: пейзажи|Featured pictures of landscapes in Estonia
+commons|c:landscapes_in_Germany|Германия: пейзажи|Featured pictures of landscapes in Germany
+commons|c:landscapes_in_the_Netherlands|Нидерланды: пейзажи|Featured pictures of landscapes in the Netherlands
+commons|c:the_Alps_in_Switzerland|Альпы, Швейцария|Featured pictures of the Alps in Switzerland
+commons|c:Norway|Норвегия|Featured pictures of Norway
+commons|c:Japan|Япония|Featured pictures of Japan
+commons|c:New_Zealand|Новая Зеландия|Featured pictures of New Zealand
+commons|c:Scotland|Шотландия|Featured pictures of Scotland
+commons|c:Egypt|Египет|Featured pictures of Egypt
+commons|c:Portugal|Португалия|Featured pictures of Portugal
+commons|c:Mexico|Мексика|Featured pictures of Mexico
+commons|c:Indonesia|Индонезия|Featured pictures of Indonesia
+commons|c:the_Philippines|Филиппины|Featured pictures of the Philippines
+commons|c:Laos|Лаос|Featured pictures of Laos
+commons|c:Nepal|Непал|Featured pictures of Nepal
+commons|c:Greece|Греция|Featured pictures of Greece
+commons|c:Turkey|Турция|Featured pictures of Turkey
+commons|c:Peru|Перу|Featured pictures of Peru
+commons|c:Chile|Чили|Featured pictures of Chile
+commons|c:Namibia|Намибия|Featured pictures of Namibia
+commons|c:Morocco|Марокко|Featured pictures of Morocco
+commons|c:China|Китай|Featured pictures of China
+commons|c:Tasmania|Тасмания|Featured pictures of Tasmania
+commons|c:Bavaria|Бавария|Featured pictures of Bavaria
+commons|c:California|Калифорния|Featured pictures of California
+commons|c:Alaska|Аляска|Featured pictures of Alaska
+commons|c:Yellowstone_National_Park|Йеллоустон|Featured pictures of Yellowstone National Park
+commons|c:Paris|Париж|Featured pictures of Paris
+commons|c:London|Лондон|Featured pictures of London
+commons|c:Berlin|Берлин|Featured pictures of Berlin
+commons|c:Vienna|Вена|Featured pictures of Vienna
+commons|c:Prague|Прага|Featured pictures of Prague
+commons|c:Rome|Рим|Featured pictures of Rome
+commons|c:Istanbul|Стамбул|Featured pictures of Istanbul
+commons|c:Tokyo|Токио|Featured pictures of Tokyo
+commons|c:New_York_City|Нью-Йорк|Featured pictures of New York City
+commons|c:Singapore|Сингапур|Featured pictures of Singapore
+commons|c:Hong_Kong|Гонконг|Featured pictures of Hong Kong
+nasa|n:nebula|Туманности|nebula
+nasa|n:galaxy|Галактики|galaxy
+nasa|n:hubble_deep_field|Hubble: глубокое поле|hubble deep field
+nasa|n:james_webb|James Webb|james webb
+nasa|n:star_cluster|Звёздные скопления|star cluster
+nasa|n:supernova_remnant|Остатки сверхновых|supernova remnant
+nasa|n:milky_way|Млечный Путь|milky way
+nasa|n:black_hole|Чёрные дыры|black hole
+nasa|n:earth_from_space|Земля из космоса|earth from space
+nasa|n:earth_at_night_city_lights|Земля ночью|earth at night city lights
+nasa|n:aurora_from_space|Полярные сияния из космоса|aurora from space
+nasa|n:international_space_station|МКС|international space station
+nasa|n:astronaut_spacewalk|Выход в открытый космос|astronaut spacewalk
+nasa|n:apollo_moon|Аполлон и Луна|apollo moon
+nasa|n:moon_surface|Поверхность Луны|moon surface
+nasa|n:mars_surface|Марс|mars surface
+nasa|n:mars_rover_panorama|Марс: панорамы марсоходов|mars rover panorama
+nasa|n:jupiter|Юпитер|jupiter
+nasa|n:saturn_rings|Сатурн|saturn rings
+nasa|n:europa_enceladus|Европа и Энцелад|europa enceladus
+nasa|n:neptune_uranus|Нептун и Уран|neptune uranus
+nasa|n:sun_solar_flare|Солнце|sun solar flare
+nasa|n:comet|Кометы|comet
+nasa|n:eclipse|Затмения|eclipse
+nasa|n:rocket_launch|Запуски ракет|rocket launch
+nasa|n:space_shuttle|Шаттлы|space shuttle
+nasa|n:hurricane_from_space|Ураганы из космоса|hurricane from space
+nasa|n:glaciers_from_space|Ледники из космоса|glaciers from space
+nasa|n:landsat_earth|Landsat: Земля|landsat earth
+nasa|n:orion_nebula|Туманность Ориона|orion nebula
+nasa|n:pillars_of_creation|Столпы творения|pillars of creation
+nasa|n:andromeda|Андромеда|andromeda
+met|m:landscape_11|Европейские пейзажи|landscape;11
+met|m:seascape_11|Морские виды|seascape;11
+met|m:mountains_11|Горы (живопись)|mountains;11
+met|m:garden_11|Сады|garden;11
+met|m:sunset_11|Закаты (живопись)|sunset;11
+met|m:winter_snow_11|Зима и снег|winter snow;11
+met|m:river_11|Реки|river;11
+met|m:city_view_11|Городские виды (живопись)|city view;11
+met|m:Monet_11|Клод Моне|Monet;11
+met|m:Van_Gogh_11|Ван Гог|Van Gogh;11
+met|m:Cezanne_11|Сезанн|Cezanne;11
+met|m:Turner_11|Тёрнер|Turner;11
+met|m:Corot_11|Коро|Corot;11
+met|m:Constable_11|Констебл|Constable;11
+met|m:Courbet_11|Курбе|Courbet;11
+met|m:Sisley_11|Сислей|Sisley;11
+met|m:Pissarro_11|Писсарро|Pissarro;11
+met|m:Renoir_11|Ренуар|Renoir;11
+met|m:Manet_11|Мане|Manet;11
+met|m:Rembrandt_11|Рембрандт|Rembrandt;11
+met|m:Bierstadt_11|Бирштадт|Bierstadt;11
+met|m:Thomas_Cole_11|Томас Коул|Thomas Cole;11
+met|m:landscape_6|Азия: пейзажи|landscape;6
+met|m:Hokusai_6|Хокусай|Hokusai;6
+met|m:Hiroshige_6|Хиросигэ|Hiroshige;6
+met|m:flowers_birds_6|Азия: цветы и птицы|flowers birds;6
+met|m:landscape_19|Старые фотографии: пейзажи|landscape;19
+met|m:landscape_21|Современное искусство: пейзажи|landscape;21

@@ -34,6 +34,13 @@ android {
         }
     }
 
+    // The widgets (clock-free cards: weather, moon, rates...) are shared with the other app of the pair.
+    sourceSets {
+        main {
+            java.srcDirs += ['../../shared/widgets/src']
+        }
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17

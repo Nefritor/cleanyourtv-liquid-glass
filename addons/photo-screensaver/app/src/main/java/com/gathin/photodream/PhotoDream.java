@@ -12,6 +12,7 @@ public class PhotoDream extends DreamService {
         super.onAttachedToWindow();
         setInteractive(false);
         setFullscreen(true);
+        getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(android.graphics.Color.BLACK));
         scene = new Scene(this);
         setContentView(scene.root);
     }

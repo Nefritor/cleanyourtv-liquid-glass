@@ -37,6 +37,8 @@ final class Scene {
     private final Slides slides;
     private final Prints prints;
     private ExecutorService network;
+    /** The cards the owner switched on (the widgets page), in their corners. */
+    private final com.gathin.widgets.Widgets.Host cards;
     private boolean running;
 
     private final Runnable tick = new Runnable() {
@@ -52,7 +54,9 @@ final class Scene {
         this.context = context;
         options = Options.load(context);
         root = new FrameLayout(context);
-        root.setBackgroundColor(Color.BLACK);
+        // The 4K surface sits behind the window, so a full-screen slideshow keeps the root see-through (the hosts
+        // paint the window black); the prints draw ordinary views and want the black here.
+        if (options.prints) root.setBackgroundColor(Color.BLACK);
         root.setClipChildren(false);
         if (options.sky && options.prints) {
             sky = new SkyView(context);
@@ -75,9 +79,10 @@ final class Scene {
                 dir == null ? "" : new File(dir, Media.PICTURES).getPath());
 
         int clockVisibility = options.clock ? View.VISIBLE : View.GONE;
-        overlay.findViewById(R.id.time).setVisibility(clockVisibility);
-        overlay.findViewById(R.id.ampm).setVisibility(clockVisibility);
-        overlay.findViewById(R.id.date).setVisibility(clockVisibility);
+        for (int id : new int[] {R.id.greeting, R.id.time, R.id.ampm, R.id.divider, R.id.dateBlock}) {
+            overlay.findViewById(id).setVisibility(clockVisibility);
+        }
+        ((TextView) overlay.findViewById(R.id.greeting)).setText(greeting());
         weather.setVisibility(View.GONE);
         bottomLine.setVisibility(options.clock || options.weather ? View.VISIBLE : View.GONE);
         // In full-screen mode the pictures cover everything: a dark fade keeps the bottom line readable.
@@ -90,11 +95,18 @@ final class Scene {
                     options.dates);
             slides = null;
         } else {
-            slides = new Slides(context, stage, options.dates ? caption : null, empty);
+            // Online pictures carry their author and licence, which must be shown whatever the dates option says.
+            boolean credits = options.credit && !Feed.selected(context).isEmpty();
+            slides = new Slides(context, stage, options.dates || credits ? caption : null, options.dates, credits, empty);
             prints = null;
-            if (!options.dates) caption.setVisibility(View.GONE);
+            if (!options.dates && !credits) caption.setVisibility(View.GONE);
         }
         bottomLine.bringToFront();
+        cards = new com.gathin.widgets.Widgets.Host(context, SaverWidgets.surface(context));
+        if (slides != null) {
+            cards.setListener((rects, radius) -> slides.setBlurRects(rects, radius, root.getWidth()));
+        }
+        root.addView(cards.view(), new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
     }
 
     void start() {
@@ -103,6 +115,7 @@ final class Scene {
         if (slides != null) slides.start();
         if (prints != null) prints.start();
         handler.post(tick);
+        cards.start();
         if (options.weather) {
             network = Executors.newSingleThreadExecutor();
             handler.post(refreshWeather);
@@ -112,10 +125,19 @@ final class Scene {
     void stop() {
         running = false;
         handler.removeCallbacksAndMessages(null);
+        cards.stop();
         if (network != null) network.shutdownNow();
         network = null;
         if (slides != null) slides.stop();
         if (prints != null) prints.stop();
+    }
+
+    /** "Good evening" and so on, from the hour. */
+    private String greeting() {
+        int hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY);
+        return context.getString(hour >= 5 && hour < 12 ? R.string.greeting_morning
+                : hour >= 12 && hour < 18 ? R.string.greeting_day
+                : hour >= 18 && hour < 23 ? R.string.greeting_evening : R.string.greeting_night);
     }
 
     private void nudge() {
@@ -128,6 +150,7 @@ final class Scene {
     /** The cached reading if it is fresh, else a new one; again every 30 minutes while the scene runs. */
     private void refreshWeather() {
         if (!running) return;
+        android.util.Log.d("Weather", "refresh");
         handler.postDelayed(refreshWeather, Weather.REFRESH_MS);
         SharedPreferences cache = context.getSharedPreferences("weather", Context.MODE_PRIVATE);
         String cached = cache.getString("text", "");
@@ -137,6 +160,7 @@ final class Scene {
             return;
         }
         Weather.locate(context, location -> {
+            android.util.Log.d("Weather", "location " + (location != null));
             ExecutorService n = network;
             if (location == null || n == null || !running) return;
             double lat = location.getLatitude(), lon = location.getLongitude();
@@ -146,6 +170,7 @@ final class Scene {
                     try {
                         text = Weather.now(lat, lon);
                     } catch (Exception e) {
+                        android.util.Log.w("Weather", "fetch failed: " + e);
                         return;   // offline: keep what shows, try again in half an hour
                     }
                     cache.edit().putString("text", text).putLong("at", System.currentTimeMillis()).apply();

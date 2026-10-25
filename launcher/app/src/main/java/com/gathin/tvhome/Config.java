@@ -48,6 +48,8 @@ final class Config {
      * resume when it differs, however the settings were left (see MainActivity#onResume).
      */
     static final String SETTINGS_REVISION_KEY = "settings_revision";
+    /** The owner's background style (Backdrop settings): aurora, appart, wallpaper, stars or a colour scheme; absent = the theme's. */
+    static final String BACKDROP_KEY = "backdrop";
 
     /** True when Launcher settings changed something since Home was built at revision {@code seen}. */
     static boolean settingsChanged(long seen, long current) {
@@ -600,7 +602,7 @@ final class Config {
         return new Config(dock, fillDock, hidden, libraryApps, liveTv, liveTvAction, liveTvInputId, packageMap(launchActions), packageMap(appLabels),
                 packageMap(appBanners), panelService,
                 panelAction, panelExtra, coocaaSources, inputAction, inputUriScheme,
-                Math.max(1, columns), Math.max(0, rowsBelow), animations, advancedEffects,
+                Math.max(1, columns), 0, animations, advancedEffects,
                 shamsi, greetingName, moduleCards, reducedMotion, bootToLiveTv, openOnStartChoice, dockTitle, dockRow, topMenu, launcherSettingsButton, reorderButton, showNetworkPill, showInputsPill, iconOnlyButtons, iconOnlyInputs, libraryButton, wifiLabelWidth, alwaysShowNames, wallpaperTrueColor, focusOvershoot, vpn, homeSettings, showStats, library, librarySelection, uniformTiles, background,
                 Math.max(0, Math.min(100, skyIntensity)), settingsKeycodes, settingsKeyPanel, restoreKeyServices, wallpaperEnabled, wallpaper,
                 wallpapers, rotationMinutes, wallpaperDim, dockOpacity, wallpaperOrder, applied,
@@ -698,6 +700,53 @@ final class Config {
             }
         }
         return json;
+    }
+
+    /** The theme's config.json as pushed to the TV, or null; for views that read their own keys. */
+    static JSONObject overlay(Context ctx) {
+        File d = dir(ctx);
+        return d == null ? null : read(new File(d, FILE_NAME));
+    }
+
+    /** An opaque colour from the theme's config.json (#RRGGBB), or 0 when the key is missing or not a colour. */
+    static int themeColor(Context ctx, String key) {
+        JSONObject json = overlay(ctx);
+        return json == null ? 0 : color(json, key, 0);
+    }
+
+    /** A boolean from the theme's config.json; false when the key is missing. */
+    static boolean themeBool(Context ctx, String key) {
+        return themeBool(ctx, key, false);
+    }
+
+    static boolean themeBool(Context ctx, String key, boolean fallback) {
+        JSONObject json = overlay(ctx);
+        return json == null ? fallback : json.optBoolean(key, fallback);
+    }
+
+    /** Whether the focused app's own pictures show behind Home: the owner's choice in Launcher settings, else the theme's app_art. */
+    static boolean appArtEnabled(Context ctx) {
+        SharedPreferences choices = ctx.getSharedPreferences(SETTINGS_NAME, Context.MODE_PRIVATE);
+        String backdrop = choices.getString(BACKDROP_KEY, null);
+        if (backdrop != null) return "appart".equals(backdrop);
+        return choices.contains("app_art") ? choices.getBoolean("app_art", false) : themeBool(ctx, "app_art");
+    }
+
+    /** The owner's chosen background style, or null while the theme decides. */
+    static String backdrop(Context ctx) {
+        return ctx.getSharedPreferences(SETTINGS_NAME, Context.MODE_PRIVATE).getString(BACKDROP_KEY, null);
+    }
+
+    /** A string from the theme's config.json; "" when the key is missing. */
+    static String themeString(Context ctx, String key) {
+        JSONObject json = overlay(ctx);
+        return json == null ? "" : string(json, key, "");
+    }
+
+    /** An integer from the theme's config.json within [min, max], else the fallback. */
+    static int themeInt(Context ctx, String key, int fallback, int min, int max) {
+        JSONObject json = overlay(ctx);
+        return json == null ? fallback : integer(json, key, fallback, min, max);
     }
 
     private static JSONObject read(File file) {

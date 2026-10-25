@@ -24,6 +24,7 @@ import android.widget.TextView;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
@@ -46,10 +47,13 @@ final class Slides {
     private final Random random = new Random();
     /** The month and year of the picture on screen, or null when the option is off. */
     private final TextView caption;
+    /** Whether a local picture gets its month and year as the caption; online pictures always get their credit. */
+    private final boolean dates;
+    /** Whether an online picture's author and licence line is shown. */
+    private final boolean credits;
     private final View empty;
     private ExecutorService decoder;
-    private ImageView front;
-    private ImageView back;
+    private final Stage surface4k;
     private final TextureView video;
     private MediaPlayer player;
     private Surface surface;
@@ -66,8 +70,10 @@ final class Slides {
 
     private final Runnable advance = this::showNext;
 
-    Slides(Context context, FrameLayout stage, TextView caption, View empty) {
+    Slides(Context context, FrameLayout stage, TextView caption, boolean dates, boolean credits, View empty) {
         this.context = context;
+        this.dates = dates;
+        this.credits = credits;
         this.caption = caption;
         this.empty = empty;
         video = new TextureView(context);
@@ -90,25 +96,40 @@ final class Slides {
         });
         stage.addView(video, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        back = image(stage);
-        front = image(stage);
-        DisplayMetrics metrics = context.getResources().getDisplayMetrics();
-        width = metrics.widthPixels;
-        height = metrics.heightPixels;
+        // The panel's real size, not the 1080p the UI layer runs at: the pictures are drawn at 4K when the panel is.
+        int[] panel = panelSize(context);
+        width = panel[0];
+        height = panel[1];
+        surface4k = new Stage(context, width, height, FADE_MS);
+        stage.addView(surface4k, 0, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         preferences = context.getSharedPreferences("photo_dream", Context.MODE_PRIVATE);
         File dir = context.getExternalFilesDir(null);
         interval = Media.seconds(Photos.read(dir == null ? null : new File(dir, Media.SECONDS))) * 1000L;
         images = dir == null ? new ArrayList<>() : Media.list(new File(dir, Media.PICTURES));
+        if (!Feed.selected(context).isEmpty()) {
+            images.addAll(Online.files(context));
+            Collections.shuffle(images, random);
+        }
         if (caption != null) caption.setAlpha(0f);
     }
 
-    private ImageView image(FrameLayout stage) {
-        ImageView view = new ImageView(context);
-        view.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        view.setAlpha(0f);
-        stage.addView(view, new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        return view;
+    /** {width, height} of the display's current mode, at most 3840x2160. */
+    private static int[] panelSize(Context context) {
+        DisplayMetrics metrics = context.getResources().getDisplayMetrics();
+        int w = metrics.widthPixels, h = metrics.heightPixels;
+        try {
+            android.view.Display display = context.getSystemService(android.hardware.display.DisplayManager.class)
+                    .getDisplay(android.view.Display.DEFAULT_DISPLAY);
+            android.view.Display.Mode mode = display.getMode();
+            if (mode.getPhysicalWidth() >= w && mode.getPhysicalHeight() >= h) {
+                w = mode.getPhysicalWidth();
+                h = mode.getPhysicalHeight();
+            }
+        } catch (RuntimeException ignored) {
+            // Keep the UI size.
+        }
+        return new int[] {Math.min(w, 3840), Math.min(h, 2160)};
     }
 
     void start() {
@@ -123,8 +144,7 @@ final class Slides {
         handler.removeCallbacksAndMessages(null);
         if (decoder != null) decoder.shutdownNow();
         decoder = null;
-        if (front != null) { cancel(front); release(front); }
-        if (back != null) { cancel(back); release(back); }
+        surface4k.clear();
         pendingClip = null;
         stopVideo();
     }
@@ -134,6 +154,7 @@ final class Slides {
         if (!running || images.isEmpty() || decoder == null) return;
         decoder.execute(() -> {
             Bitmap bitmap = null;
+            Bitmap blur = null;
             File clip = null;
             String date = "";
             // Skip unreadable pictures, but stop after one round so a folder of broken files doesn't spin.
@@ -143,11 +164,17 @@ final class Slides {
                 if (Media.video(file.getName())) {
                     clip = file;
                 } else {
-                    bitmap = decode(file);
-                    if (bitmap != null && caption != null) date = Photos.dateOf(file);
+                    Bitmap[] blurOut = new Bitmap[1];
+                    bitmap = decode(file, blurOut);
+                    blur = blurOut[0];
+                    if (bitmap != null && caption != null) {
+                        String credit = Online.credit(context, file);
+                        date = !credit.isEmpty() ? (credits ? credit : "") : dates ? Photos.dateOf(file) : "";
+                    }
                 }
             }
             Bitmap shown = bitmap;
+            Bitmap shownBlur = blur;
             File playing = clip;
             String shownDate = date;
             handler.post(() -> {
@@ -161,7 +188,7 @@ final class Slides {
                     return;
                 }
                 if (shown != null) {
-                    crossfade(shown);
+                    crossfade(shown, shownBlur);
                     showCaption(shownDate);
                 }
                 // A single picture still drifts on: it fades into itself with a new zoom.
@@ -183,42 +210,17 @@ final class Slides {
         }).start();
     }
 
-    private void crossfade(Bitmap bitmap) {
-        ImageView incoming = back;
-        ImageView outgoing = front;
-        back = outgoing;
-        front = incoming;
-        cancel(incoming);
-        release(incoming);
-        incoming.setImageBitmap(bitmap);
-        incoming.setTag(bitmap);
-        incoming.bringToFront();
+    private void crossfade(Bitmap bitmap, Bitmap blur) {
         // Start zoomed in or out at random and drift toward a random spot, over the whole slide.
         boolean zoomIn = random.nextBoolean();
         float from = zoomIn ? 1f : ZOOM;
         float to = zoomIn ? ZOOM : 1f;
         float dx = (random.nextFloat() - 0.5f) * width * (ZOOM - 1f);
         float dy = (random.nextFloat() - 0.5f) * height * (ZOOM - 1f);
-        incoming.setAlpha(0f);
-        ObjectAnimator fade = ObjectAnimator.ofFloat(incoming, View.ALPHA, 0f, 1f).setDuration(FADE_MS);
-        ObjectAnimator drift = ObjectAnimator.ofPropertyValuesHolder(incoming,
-                PropertyValuesHolder.ofFloat(View.SCALE_X, from, to),
-                PropertyValuesHolder.ofFloat(View.SCALE_Y, from, to),
-                PropertyValuesHolder.ofFloat(View.TRANSLATION_X, zoomIn ? 0f : dx, zoomIn ? dx : 0f),
-                PropertyValuesHolder.ofFloat(View.TRANSLATION_Y, zoomIn ? 0f : dy, zoomIn ? dy : 0f))
-                .setDuration(interval + 2 * FADE_MS);
-        drift.setInterpolator(new LinearInterpolator());
-        AnimatorSet set = new AnimatorSet();
-        set.playTogether(fade, drift);
-        incoming.setTag(R.id.animation, set);
-        set.start();
+        surface4k.show(bitmap, blur, from, to, zoomIn ? 0f : dx, zoomIn ? dx : 0f, zoomIn ? 0f : dy, zoomIn ? dy : 0f,
+                interval + 2 * FADE_MS);
         boolean afterClip = player != null;
-        handler.postDelayed(() -> {
-            cancel(outgoing);
-            outgoing.setAlpha(0f);
-            release(outgoing);
-            if (afterClip) stopVideo();
-        }, FADE_MS + 100);
+        if (afterClip) handler.postDelayed(this::stopVideo, FADE_MS + 100);
     }
 
     /** Fades the clip in over whatever shows now and plays it to the end (or loops a lone clip). */
@@ -246,11 +248,7 @@ final class Slides {
                 else video.animate().alpha(1f).setDuration(FADE_MS).start();
                 handler.postDelayed(() -> {
                     if (generation != clipGeneration) return;
-                    for (ImageView view : new ImageView[] {front, back}) {
-                        cancel(view);
-                        view.setAlpha(0f);
-                        release(view);
-                    }
+                    surface4k.clear();
                 }, FADE_MS + 100);
             });
             mp.setOnCompletionListener(p -> {
@@ -291,29 +289,56 @@ final class Slides {
         }
     }
 
-    private static void cancel(ImageView view) {
-        Object set = view.getTag(R.id.animation);
-        if (set instanceof AnimatorSet) ((AnimatorSet) set).cancel();
-        view.setTag(R.id.animation, null);
+    /** The cards' blur places (window pixels), handed to the 4K surface. */
+    void setBlurRects(java.util.List<android.graphics.RectF> rects, float radiusPx, int windowWidth) {
+        surface4k.setBlurRects(rects, radiusPx, windowWidth);
     }
 
-    /** Frees the view's picture now instead of waiting for the garbage collector. */
-    private static void release(ImageView view) {
-        Object old = view.getTag();
-        view.setImageDrawable(null);
-        view.setTag(null);
-        if (old instanceof Bitmap) ((Bitmap) old).recycle();
+    /** A 48-pixel-wide, softened copy of the picture: shown stretched up, it is the blur behind the cards. */
+    private static Bitmap blurred(Bitmap source) {
+        // A gentle blur: 200 px wide and one pass, so shapes behind a card stay recognisable but soft.
+        int w = 200, h = Math.max(8, Math.round(200f * source.getHeight() / source.getWidth()));
+        Bitmap mid = Bitmap.createScaledBitmap(source, Math.max(w * 2, 1), Math.max(h * 2, 1), true);
+        Bitmap small = Bitmap.createScaledBitmap(mid, w, h, true);
+        if (mid != source && mid != small) mid.recycle();
+        int[] px = new int[w * h];
+        small.getPixels(px, 0, w, 0, 0, w, h);
+        px = box(px, w, h);
+        Bitmap out = Bitmap.createBitmap(px, w, h, Bitmap.Config.ARGB_8888);
+        small.recycle();
+        return out;
     }
 
-    private Bitmap decode(File file) {
+    private static int[] box(int[] src, int w, int h) {
+        int[] out = new int[src.length];
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                int r = 0, g = 0, b = 0, n = 0;
+                for (int dy = -1; dy <= 1; dy++) {
+                    for (int dx = -1; dx <= 1; dx++) {
+                        int xx = Math.max(0, Math.min(w - 1, x + dx)), yy = Math.max(0, Math.min(h - 1, y + dy));
+                        int p = src[yy * w + xx];
+                        r += (p >> 16) & 0xFF;
+                        g += (p >> 8) & 0xFF;
+                        b += p & 0xFF;
+                        n++;
+                    }
+                }
+                out[y * w + x] = 0xFF000000 | ((r / n) << 16) | ((g / n) << 8) | (b / n);
+            }
+        }
+        return out;
+    }
+
+    private Bitmap decode(File file, Bitmap[] blurOut) {
         try {
             BitmapFactory.Options options = new BitmapFactory.Options();
             options.inJustDecodeBounds = true;
             BitmapFactory.decodeFile(file.getPath(), options);
             int w = options.outWidth, h = options.outHeight;
-            if (w <= 0 || h <= 0) return null;
+            if (w <= 0 || h <= 0) { android.util.Log.w("Slides", "no bounds: " + file.getName()); return null; }
             int sample = Media.sampleSize(w, h, width, height);
-            if (!Media.accepted(w / sample, h / sample)) return null;
+            if (!Media.accepted(w / sample, h / sample)) { android.util.Log.w("Slides", "rejected " + w + "x" + h + " sample " + sample + " screen " + width + "x" + height); return null; }
             options.inJustDecodeBounds = false;
             options.inSampleSize = sample;
             int[] scale = Media.coverScale(w / sample, h / sample, width, height);
@@ -322,14 +347,20 @@ final class Slides {
                 options.inDensity = scale[0];
                 options.inTargetDensity = scale[1];
             }
-            options.inPreferredConfig = Bitmap.Config.RGB_565;
+            options.inPreferredConfig = Bitmap.Config.ARGB_8888;   // 565 bands skies and fog on a 4K picture
             Bitmap decoded = BitmapFactory.decodeFile(file.getPath(), options);
-            if (decoded == null) return null;
+            if (decoded == null) { android.util.Log.w("Slides", "decodeFile null"); return null; }
+            try {
+                blurOut[0] = blurred(decoded);
+            } catch (RuntimeException | OutOfMemoryError ignored) {
+                // No blur for this picture.
+            }
             Bitmap gpu = decoded.copy(Bitmap.Config.HARDWARE, false);
             if (gpu == null) return decoded;
             decoded.recycle();
             return gpu;
         } catch (Exception | OutOfMemoryError failure) {
+            android.util.Log.w("Slides", "decode failed: " + file.getName() + " " + failure);
             return null;
         }
     }

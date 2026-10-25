@@ -17,6 +17,14 @@ public class GlassView extends View {
 
     private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint specular = new Paint(Paint.ANTI_ALIAS_FLAG);
+    /** How far the soft glow reaches around the slab, in dp; MainActivity sizes the glass with the same number. */
+    static final float INSET_DP = 6f;
+
+    /** The soft ring of light around the focused tile; switched off. */
+    private static final boolean DRAW_GLOW = false;
+    /** The glass slab over the focused tile (fill, sheen, rim); switched off. */
+    private static final boolean DRAW_SLAB = false;
+
     private final Paint rim = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint glow = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF rect = new RectF();
@@ -83,21 +91,24 @@ public class GlassView extends View {
 
     @Override
     protected void onDraw(Canvas canvas) {
-        float inset = 6f * density;   // room for the glow
+        if (!DRAW_SLAB) return;   // the highlight is off: the focused tile shows by its size alone
+        float inset = INSET_DP * density;   // room for the glow
         rect.set(inset, inset, getWidth() - inset, getHeight() - inset);
 
         // Outer glow: thin rings across the inset, each a little fainter, so it fades out smoothly. Three wide
         // strokes left visible bands once the glow took an app's colour at a stronger alpha. The hardware layer
         // caches the result, so the rings cost one draw, not one per frame of the spring.
-        if (!flat || halo) {
-            int rings = 12;
+        // The outer glow is off: the focused tile is marked by its lift in size and the light sheen on it alone.
+        if (DRAW_GLOW && (!flat || halo)) {
+            int rings = 44;
             float step = inset / rings;
             int alpha = flat ? glowAlpha / 2 : glowAlpha;
             glow.setStrokeWidth(step + 0.5f);
             for (int i = 0; i < rings; i++) {
                 float o = step * (i + 0.5f);
                 float t = 1f - (float) i / rings;
-                glow.setColor(Math.round(alpha * t) << 24 | glowRgb);
+                t = (float) Math.pow(t, 2.4);   // a long soft tail: no visible edge where the glow ends
+                glow.setColor(Math.round(alpha * 1.9f * t) << 24 | glowRgb);
                 canvas.drawRoundRect(rect.left - o, rect.top - o, rect.right + o, rect.bottom + o, radius + o, radius + o, glow);
             }
         }
@@ -114,7 +125,6 @@ public class GlassView extends View {
         canvas.clipRect(rect.left, rect.top, rect.right, rect.top + rect.height() * 0.45f);
         canvas.drawRoundRect(rect, radius, radius, specular);
         canvas.restore();
-
-        canvas.drawRoundRect(rect, radius, radius, rim);
+        // No border line: the soft glow alone marks the focused tile.
     }
 }

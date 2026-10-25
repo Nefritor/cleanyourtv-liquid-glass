@@ -84,9 +84,41 @@ final class Weather {
         }
     }
 
-    /** "12°  ☁" for the place, blocking: call it off the main thread. */
+    /** "12°  ☁" for the place, blocking: call it off the main thread. MET Norway first, Open-Meteo if that fails. */
     static String now(double latitude, double longitude) throws IOException, JSONException {
-        // Two decimals is about 1 km: enough for the weather, no more of where the TV is than that.
+        try {
+            return metNo(latitude, longitude);
+        } catch (IOException | JSONException e) {
+            return openMeteo(latitude, longitude);
+        }
+    }
+
+    /** api.met.no (no key; asks for an identifying User-Agent). Two decimals is about 1 km: no more of where the TV is. */
+    private static String metNo(double latitude, double longitude) throws IOException, JSONException {
+        String url = String.format(Locale.ROOT,
+                "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=%.2f&lon=%.2f", latitude, longitude);
+        JSONObject first = get(url).getJSONObject("properties").getJSONArray("timeseries").getJSONObject(0)
+                .getJSONObject("data");
+        int temp = (int) Math.round(first.getJSONObject("instant").getJSONObject("details").getDouble("air_temperature"));
+        JSONObject next = first.optJSONObject("next_1_hours");
+        String code = next == null ? "" : next.getJSONObject("summary").optString("symbol_code", "");
+        return temp + "°  " + metSymbol(code);
+    }
+
+    /** MET Norway's symbol_code ("partlycloudy_night", "lightrain", ...) as a plain symbol. */
+    static String metSymbol(String code) {
+        boolean night = code.endsWith("_night");
+        String base = code.replaceAll("_(day|night|polartwilight)$", "");
+        if (base.contains("thunder")) return "⚡";
+        if (base.contains("snow") || base.contains("sleet")) return "❄";
+        if (base.contains("rain") || base.contains("drizzle")) return "☂";
+        if (base.equals("fog")) return "☁";
+        if (base.equals("cloudy")) return "☁";
+        if (base.startsWith("partlycloudy") || base.startsWith("fair")) return "⛅";
+        return night ? "☾" : "☀";   // clear sky: moon, sun
+    }
+
+    private static String openMeteo(double latitude, double longitude) throws IOException, JSONException {
         String url = String.format(Locale.ROOT, "https://api.open-meteo.com/v1/forecast?latitude=%.2f"
                 + "&longitude=%.2f&current=temperature_2m,weather_code,is_day", latitude, longitude);
         JSONObject current = get(url).getJSONObject("current");
@@ -108,6 +140,7 @@ final class Weather {
         HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
         connection.setConnectTimeout(TIMEOUT_MS);
         connection.setReadTimeout(TIMEOUT_MS);
+        connection.setRequestProperty("User-Agent", Net.AGENT);
         try (InputStream in = connection.getInputStream()) {
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             byte[] buffer = new byte[4096];

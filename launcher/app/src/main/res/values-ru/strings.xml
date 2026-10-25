@@ -42,6 +42,9 @@
     <string name="dream_name">Часы</string>
     <string name="vpn">VPN</string>
     <string name="vpn_off">VPN отключён</string>
+    <string name="vpn_button_on">VPN вкл</string>
+    <string name="vpn_button_off">VPN выкл</string>
+    <string name="vpn_button_wait">VPN…</string>
     <string name="home_settings">Главный экран по умолчанию</string>
     <string name="home_settings_help">Выберите исходный главный экран, чтобы перестать использовать CleanYourTV по умолчанию, или CleanYourTV, чтобы вернуться. Исходный экран должен быть включён, а телевизор должен поддерживать выбор главного экрана. Если он отключён, сначала запустите скрипт восстановления.</string>
     <string name="input_key_service_description">Открывает список источников при нажатии кнопки выбора источника на пульте.</string>
@@ -89,6 +92,11 @@
     <string name="quick_network">Сеть</string>
     <string name="quick_apps">Приложения</string>
     <string name="quick_apps_hint">Включить снова</string>
+    <string name="widgets_label">Виджеты</string>
+    <string name="section_grid">Сетка</string>
+    <string name="section_look">Вид</string>
+    <string name="section_system">Система</string>
+    <string name="app_art_state">Карточки приложений на фоне: %1$s</string>
     <string name="on">Вкл.</string>
     <string name="off">Выкл.</string>
     <string name="enable">Включить</string>
@@ -148,4 +156,5 @@
     <!-- Cinematic top shelf (cinematic_home): the line under the focused dock app's name; %1$s is when it was
          last opened, e.g. "5 minutes ago" or "yesterday, 9:40 pm". -->
     <string name="last_opened">Последний запуск: %1$s</string>
+    <string name="backdrop_state">Фон: %1$s</string>
 </resources>

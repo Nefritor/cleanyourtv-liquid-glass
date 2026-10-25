@@ -8,12 +8,7 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.provider.Settings;
-import android.util.TypedValue;
 import android.view.View;
-import android.widget.Button;
-import android.widget.LinearLayout;
-import android.widget.ScrollView;
-import android.widget.Switch;
 import android.widget.TextView;
 
 /**
@@ -25,56 +20,49 @@ public class SettingsActivity extends Activity {
     private static final int ASK_LOCATION = 1;
 
     private SharedPreferences preferences;
-    private Switch weatherSwitch;
-    private Switch skySwitch;
+    private Glass.Toggle weatherSwitch;
+    private Glass.Toggle skySwitch;
     private TextView weatherStatus;
-    private Button locationButton;
+    private TextView locationButton;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         preferences = Options.preferences(this);
-        int pad = dp(48);
-        LinearLayout list = new LinearLayout(this);
-        list.setOrientation(LinearLayout.VERTICAL);
-        list.setPadding(pad * 2, pad, pad * 2, pad);
+        Glass.Page page = new Glass.Page(this);
+        page.add(Glass.title(this, getString(R.string.settings_title)));
 
-        TextView title = new TextView(this);
-        title.setText(R.string.settings_title);
-        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 28);
-        title.setPadding(0, 0, 0, dp(16));
-        list.addView(title);
-
-        list.addView(toggle(Options.CLOCK, R.string.option_clock, null));
-        list.addView(toggle(Options.DATES, R.string.option_dates, null));
-        list.addView(toggle(Options.PRINTS, R.string.option_prints, on -> skySwitch.setEnabled(on)));
+        page.add(Glass.section(this, getString(R.string.section_screen)));
+        page.add(toggle(Options.CLOCK, R.string.option_clock, null));
+        page.add(toggle(Options.DATES, R.string.option_dates, null));
+        page.add(toggle(Options.CREDIT, R.string.option_credit, null));
+        page.add(toggle(Options.PRINTS, R.string.option_prints, on -> skySwitch.setAvailable(on)));
         skySwitch = toggle(Options.SKY, R.string.option_sky, null);
-        skySwitch.setEnabled(preferences.getBoolean(Options.PRINTS, false));
-        list.addView(skySwitch);
+        skySwitch.setAvailable(preferences.getBoolean(Options.PRINTS, false));
+        page.add(skySwitch);
+
+        page.add(Glass.section(this, getString(R.string.section_weather)));
         weatherSwitch = toggle(Options.WEATHER, R.string.option_weather, this::weatherChanged);
-        list.addView(weatherSwitch);
-
-        weatherStatus = new TextView(this);
-        weatherStatus.setPadding(dp(8), 0, 0, dp(8));
-        list.addView(weatherStatus);
-        locationButton = new Button(this);
-        locationButton.setText(R.string.open_location_settings);
+        page.add(weatherSwitch);
+        weatherStatus = Glass.note(this, "");
+        page.add(weatherStatus);
+        locationButton = Glass.button(this, getString(R.string.open_location_settings));
         locationButton.setOnClickListener(v -> openLocationSettings());
-        list.addView(locationButton, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        page.add(locationButton);
 
-        Button preview = new Button(this);
-        preview.setText(R.string.preview);
+        page.add(Glass.section(this, getString(R.string.section_more)));
+        TextView widgets = Glass.button(this, getString(R.string.widgets_button));
+        widgets.setOnClickListener(v -> startActivity(new Intent(this, WidgetsActivity.class)));
+        page.add(widgets);
+        TextView sources = Glass.button(this, getString(R.string.sources_button));
+        sources.setOnClickListener(v -> startActivity(new Intent(this, SourcesActivity.class)));
+        page.add(sources);
+        TextView preview = Glass.button(this, getString(R.string.preview));
         preview.setOnClickListener(v -> startActivity(new Intent(this, SlideshowActivity.class)));
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        lp.topMargin = dp(24);
-        list.addView(preview, lp);
+        page.add(preview);
 
-        ScrollView scroll = new ScrollView(this);
-        scroll.addView(list);
-        setContentView(scroll);
-        list.getChildAt(1).requestFocus();
+        setContentView(page.root);
+        page.column.getChildAt(2).requestFocus();
     }
 
     @Override
@@ -83,21 +71,11 @@ public class SettingsActivity extends Activity {
         updateWeatherStatus();   // back from the TV's location settings
     }
 
-    private interface Changed {
-        void on(boolean value);
-    }
-
-    private Switch toggle(String key, int label, Changed changed) {
-        Switch s = new Switch(this);
-        s.setText(label);
-        s.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
-        s.setPadding(dp(8), dp(12), dp(8), dp(12));
-        s.setChecked(preferences.getBoolean(key, false));
-        s.setOnCheckedChangeListener((button, value) -> {
+    private Glass.Toggle toggle(String key, int label, Glass.Changed changed) {
+        return Glass.toggle(this, getString(label), preferences.getBoolean(key, false), value -> {
             preferences.edit().putBoolean(key, value).apply();
             if (changed != null) changed.on(value);
         });
-        return s;
     }
 
     private void weatherChanged(boolean on) {
@@ -113,6 +91,7 @@ public class SettingsActivity extends Activity {
         if (requestCode != ASK_LOCATION) return;
         if (results.length == 0 || results[0] != PackageManager.PERMISSION_GRANTED) {
             weatherSwitch.setChecked(false);   // no location, no weather
+            preferences.edit().putBoolean(Options.WEATHER, false).apply();
         }
         updateWeatherStatus();
     }
@@ -136,7 +115,4 @@ public class SettingsActivity extends Activity {
         }
     }
 
-    private int dp(int value) {
-        return Math.round(value * getResources().getDisplayMetrics().density);
-    }
 }
